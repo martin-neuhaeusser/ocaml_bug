@@ -5,9 +5,11 @@ The example code works as follows:
 It uses custom blocks with C stubs that allocate a structure outside the OCaml heap for each custom block that is created by the OCaml program. Once the custom block is finalized by the GC, this fact is recorded in its corresponding structure. The example program never creates two custom blocks holding pointers to the same structure.
 However, if compiled with the release version of OCaml 4.03.0, the example program continues to operate on custom blocks that have been finalized before. More precisely, some custom blocks that are presented to the C stubs turn out to refer to structures of a custom block that was already finalized.
 
-
-The program terminates correctly with the 4.03.0+beta1 pre-release version,
-but crashes if compiled with the official 4.03.0 version of OCaml.
+The results differ between the compiler versions:
+4.02.3: crash
+4.03.0+beta1: success
+4.03.0+beta2: crash
+4.03.0: crash
 
 To reproduce, compile with
 ```

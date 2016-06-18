@@ -6,6 +6,9 @@
 const unsigned c_data_id = 123;
 const unsigned c_data_invalid_id = 321;
 
+/* Global flag that indicates whether a Weak.find operation is active */
+unsigned weak_find_active = 0;
+
 /* A struct to hold data that is managed within the C-bindings,
    outside of the OCaml heap */
 typedef struct {
@@ -18,7 +21,7 @@ typedef struct {
 typedef c_data* c_data_ptr;
 
 void check_c_data(c_data_ptr p) {
-  if (p->unique_id != c_data_id) {
+  if (!weak_find_active && p->unique_id != c_data_id) {
     if (p->unique_id == c_data_invalid_id)
       printf("Received value with custom block that has already been finalized before: invalid unique_id = %d\n", p->unique_id);
     else
@@ -77,18 +80,49 @@ static struct custom_operations c_data_ops = {
 CAMLprim value wrapper_create_dummy(value some_value) {
   CAMLparam1(some_value);
   CAMLlocal1(v_new);
-  c_data_ptr x;
+  c_data_ptr p;
   int param = Int_val(some_value);
 
   /* allocate and initialize a structure outside the OCaml heap */
-  x = malloc(sizeof(c_data));
-  assert (x != NULL);
-  x->unique_id = c_data_id;
-  x->dummy_data = param;
+  p = malloc(sizeof(c_data));
+  assert (p != NULL);
+  p->unique_id = c_data_id;
+  p->dummy_data = param;
 
   /* allocate a custom block to hold the pointer to the C-data */
   v_new = caml_alloc_custom(&c_data_ops, sizeof(c_data_ptr), 0, 1);
-  *((c_data_ptr*)Data_custom_val(v_new)) = x;
+  *((c_data_ptr*)Data_custom_val(v_new)) = p;
 
   CAMLreturn(v_new);
+}
+
+/* Just work on a dummy, outside of a Weak.find operation that may
+   operate on a shallow copy */
+CAMLprim value wrapper_do_something(value dummy_val) {
+  CAMLparam1(dummy_val);
+  c_data_ptr p = *((c_data_ptr*)Data_custom_val(dummy_val));
+  check_c_data(p);
+
+  p->dummy_data++;
+  p->dummy_data--;
+  CAMLreturn(Val_unit);
+}
+
+/* Set the global weak_find_active flag that deactivates checks of the
+   heap structures' ids during Weak operations */
+CAMLprim value wrapper_enter_weak() {
+  CAMLparam0();
+  assert (!weak_find_active);
+  weak_find_active = 1;
+  CAMLreturn(Val_unit);
+}
+
+
+/* Clear the weak_find_active flag and make the dummy.hash and dummy.compare
+   functions check the validity of the ids of their argument values */
+CAMLprim value wrapper_leave_weak() {
+  CAMLparam0();
+  assert (weak_find_active);
+  weak_find_active = 0;
+  CAMLreturn(Val_unit);
 }

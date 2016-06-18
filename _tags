@@ -1,2 +1,3 @@
 <gcbug.native>: linkdep(dummy.o)
 <gcbug2.native>: linkdep(dummy2.o)
+<gcbug3.native>: linkdep(dummy2.o)

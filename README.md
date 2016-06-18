@@ -28,3 +28,6 @@ ocamlbuild -use-ocamlfind gcbug.native
 
 The second example `gcbug2.native` reproduces the same behavior, however, it does not abort if an invalid custom block is encountered during a Weak.find operation.
 Still, OCaml tries to finalize custom blocks that have been finalized before...
+
+
+The third example `gcbug3.native` uses an ephemeron-based hash table which maps each entry to itself. The same C-stubs are used, and the program works correctly in 4.03.0.
